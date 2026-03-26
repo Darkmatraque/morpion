@@ -93,6 +93,7 @@ function checkWin() {
 // --- IA FACILE ---
 function aiEasy() {
   let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+  if (empty.length === 0) return;
   playMove(empty[Math.floor(Math.random() * empty.length)], "O");
 }
 
@@ -114,10 +115,11 @@ function aiMedium() {
     }
   }
 
+  // 3. Sinon random
   aiEasy();
 }
 
-// --- IA IMPOSSIBLE (Minimax adapté) ---
+// --- IA IMPOSSIBLE (seulement en 3x3) ---
 function minimax(newBoard, player) {
   let empty = newBoard.map((v, i) => v === "" ? i : null).filter(v => v !== null);
 
@@ -137,9 +139,11 @@ function minimax(newBoard, player) {
     moves.push(move);
   }
 
-  return player === "O"
-    ? moves.reduce((a, b) => a.score > b.score ? a : b)
-    : moves.reduce((a, b) => a.score < b.score ? a : b);
+  if (player === "O") {
+    return moves.reduce((a, b) => (a.score > b.score ? a : b));
+  } else {
+    return moves.reduce((a, b) => (a.score < b.score ? a : b));
+  }
 }
 
 function checkWinner(b, p) {
@@ -147,13 +151,18 @@ function checkWinner(b, p) {
 }
 
 function aiHard() {
+  // On limite Minimax au 3x3 pour éviter les crashs
+  if (gridSize !== 3) {
+    aiMedium();
+    return;
+  }
   let best = minimax([...board], "O");
   playMove(best.index, "O");
 }
 
 // --- Jouer un coup ---
 function playMove(index, player) {
-  if (board[index] !== "" || !gameActive) return;
+  if (!gameActive || board[index] !== "") return;
 
   board[index] = player;
   const cell = document.querySelector(`.cell[data-index="${index}"]`);
@@ -185,8 +194,10 @@ function playMove(index, player) {
   currentPlayer = currentPlayer === "X" ? "O" : "X";
   statusText.textContent = `Tour du joueur ${currentPlayer}`;
 
+  // Tour de l'IA si on n'est pas en JvJ
   if (currentPlayer === "O" && gameMode !== "pvp") {
     setTimeout(() => {
+      if (!gameActive) return;
       if (gameMode === "easy") aiEasy();
       else if (gameMode === "medium") aiMedium();
       else if (gameMode === "hard") aiHard();
@@ -196,13 +207,22 @@ function playMove(index, player) {
 
 // --- Clic joueur ---
 function handleCellClick(e) {
-  if (currentPlayer === "O" && gameMode !== "pvp") return;
-  playMove(e.target.getAttribute("data-index"), "X");
+  const index = e.target.getAttribute("data-index");
+  if (!gameActive || board[index] !== "") return;
+
+  if (gameMode === "pvp") {
+    // En JvJ, on joue avec currentPlayer (X puis O)
+    playMove(index, currentPlayer);
+  } else {
+    // En mode IA, le joueur humain est toujours X
+    if (currentPlayer !== "X") return;
+    playMove(index, "X");
+  }
 }
 
 // --- Reset partie ---
 function resetGame() {
-  board.fill("");
+  board = Array(gridSize * gridSize).fill("");
   gameActive = true;
   currentPlayer = "X";
   statusText.textContent = "Tour du joueur X";
@@ -246,3 +266,4 @@ createBoard(3);
 loadScores();
 resetBtn.addEventListener('click', resetGame);
 resetScoresBtn.addEventListener('click', resetScores);
+
