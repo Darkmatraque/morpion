@@ -1,6 +1,7 @@
 const cells = document.querySelectorAll('.cell');
 const statusText = document.getElementById('status');
 const resetBtn = document.getElementById('reset');
+const resetScoresBtn = document.getElementById('resetScores');
 
 // --- Scores ---
 let scoreX = 0;
@@ -10,6 +11,24 @@ let scoreDraw = 0;
 const scoreXText = document.getElementById('scoreX');
 const scoreOText = document.getElementById('scoreO');
 const scoreDrawText = document.getElementById('scoreDraw');
+
+// --- Charger les scores sauvegardés ---
+function loadScores() {
+  scoreX = parseInt(localStorage.getItem("scoreX")) || 0;
+  scoreO = parseInt(localStorage.getItem("scoreO")) || 0;
+  scoreDraw = parseInt(localStorage.getItem("scoreDraw")) || 0;
+
+  scoreXText.textContent = scoreX;
+  scoreOText.textContent = scoreO;
+  scoreDrawText.textContent = scoreDraw;
+}
+
+// --- Sauvegarder les scores ---
+function saveScores() {
+  localStorage.setItem("scoreX", scoreX);
+  localStorage.setItem("scoreO", scoreO);
+  localStorage.setItem("scoreDraw", scoreDraw);
+}
 
 // --- Jeu ---
 let currentPlayer = 'X';
@@ -43,7 +62,6 @@ function handleCellClick(e) {
     statusText.textContent = `Le joueur ${currentPlayer} a gagné !`;
     gameActive = false;
 
-    // --- Mise à jour des scores ---
     if (currentPlayer === "X") {
       scoreX++;
       scoreXText.textContent = scoreX;
@@ -52,6 +70,7 @@ function handleCellClick(e) {
       scoreOText.textContent = scoreO;
     }
 
+    saveScores();
     return;
   }
 
@@ -59,10 +78,10 @@ function handleCellClick(e) {
     statusText.textContent = "Match nul !";
     gameActive = false;
 
-    // --- Score match nul ---
     scoreDraw++;
     scoreDrawText.textContent = scoreDraw;
 
+    saveScores();
     return;
   }
 
@@ -92,6 +111,24 @@ function resetGame() {
   });
 }
 
+// --- Reset des scores ---
+function resetScores() {
+  scoreX = 0;
+  scoreO = 0;
+  scoreDraw = 0;
+
+  scoreXText.textContent = 0;
+  scoreOText.textContent = 0;
+  scoreDrawText.textContent = 0;
+
+  localStorage.removeItem("scoreX");
+  localStorage.removeItem("scoreO");
+  localStorage.removeItem("scoreDraw");
+}
+
 cells.forEach(cell => cell.addEventListener('click', handleCellClick));
 resetBtn.addEventListener('click', resetGame);
+resetScoresBtn.addEventListener('click', resetScores);
 
+// Charger les scores au démarrage
+loadScores();
