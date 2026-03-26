@@ -24,6 +24,27 @@ h1 {
   text-transform: uppercase;
 }
 
+/* Mode IA */
+#mode {
+  margin-bottom: 20px;
+}
+
+#mode button {
+  margin: 5px;
+  padding: 10px 20px;
+  background: #333;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 0 8px #0005;
+}
+
+#mode button:hover {
+  background: #555;
+}
+
 /* Scores */
 #scores {
   margin-bottom: 20px;
@@ -104,15 +125,3 @@ button:hover {
   background: #c9302c;
 }
 
-/* Boutons de mode IA */
-#mode {
-  margin-bottom: 20px;
-}
-
-#mode button {
-  background: #333;
-}
-
-#mode button:hover {
-  background: #555;
-}
