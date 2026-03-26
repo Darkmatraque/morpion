@@ -1,36 +1,23 @@
 // --- Sélecteurs ---
-const cells = document.querySelectorAll('.cell');
 const statusText = document.getElementById('status');
 const resetBtn = document.getElementById('reset');
 const resetScoresBtn = document.getElementById('resetScores');
-const modeButtons = document.querySelectorAll('#mode button');
+const modeButtons = document.querySelectorAll('#mode button[data-mode]');
+const sizeButtons = document.querySelectorAll('#mode button[data-size]');
+const boardContainer = document.querySelector('.board');
 
 // --- Scores ---
-let scoreX = 0;
-let scoreO = 0;
-let scoreDraw = 0;
-
+let scoreX = 0, scoreO = 0, scoreDraw = 0;
 const scoreXText = document.getElementById('scoreX');
 const scoreOText = document.getElementById('scoreO');
 const scoreDrawText = document.getElementById('scoreDraw');
 
 // --- Jeu ---
 let currentPlayer = 'X';
-let board = ["", "", "", "", "", "", "", "", ""];
+let board = [];
 let gameActive = true;
 let gameMode = "pvp"; // pvp, easy, medium, hard
-
-// --- Combinaisons gagnantes ---
-const winningCombos = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6]
-];
+let gridSize = 3;
 
 // --- Charger les scores ---
 function loadScores() {
@@ -50,96 +37,113 @@ function saveScores() {
   localStorage.setItem("scoreDraw", scoreDraw);
 }
 
-// --- Vérifier victoire ---
-function checkWin() {
-  return winningCombos.some(combo => {
-    const [a, b, c] = combo;
-    return board[a] !== "" && board[a] === board[b] && board[a] === board[c];
-  });
+// --- Générer les combinaisons gagnantes dynamiquement ---
+function generateWinningCombos(size) {
+  let combos = [];
+
+  // Lignes
+  for (let r = 0; r < size; r++) {
+    combos.push([...Array(size).keys()].map(c => r * size + c));
+  }
+
+  // Colonnes
+  for (let c = 0; c < size; c++) {
+    combos.push([...Array(size).keys()].map(r => r * size + c));
+  }
+
+  // Diagonale principale
+  combos.push([...Array(size).keys()].map(i => i * size + i));
+
+  // Diagonale secondaire
+  combos.push([...Array(size).keys()].map(i => i * size + (size - 1 - i)));
+
+  return combos;
 }
 
-// --- IA FACILE (random) ---
+let winningCombos = generateWinningCombos(gridSize);
+
+// --- Créer la grille ---
+function createBoard(size) {
+  gridSize = size;
+  board = Array(size * size).fill("");
+  winningCombos = generateWinningCombos(size);
+
+  boardContainer.innerHTML = "";
+  boardContainer.style.gridTemplateColumns = `repeat(${size}, 110px)`;
+  boardContainer.style.gridTemplateRows = `repeat(${size}, 110px)`;
+
+  for (let i = 0; i < size * size; i++) {
+    let cell = document.createElement("div");
+    cell.classList.add("cell");
+    cell.setAttribute("data-index", i);
+    cell.addEventListener("click", handleCellClick);
+    boardContainer.appendChild(cell);
+  }
+
+  resetGame();
+}
+
+// --- Vérifier victoire ---
+function checkWin() {
+  return winningCombos.some(combo =>
+    combo.every(i => board[i] !== "" && board[i] === board[combo[0]])
+  );
+}
+
+// --- IA FACILE ---
 function aiEasy() {
-  let emptyCells = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-  let randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-  playMove(randomIndex, "O");
+  let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+  playMove(empty[Math.floor(Math.random() * empty.length)], "O");
 }
 
 // --- IA NORMAL ---
 function aiMedium() {
-  // 1. Si IA peut gagner → elle joue
+  // 1. IA peut gagner
   for (let combo of winningCombos) {
-    const [a, b, c] = combo;
-    let line = [board[a], board[b], board[c]];
-    if (line.filter(v => v === "O").length === 2 && line.includes("")) {
-      return playMove(combo[line.indexOf("")], "O");
+    let vals = combo.map(i => board[i]);
+    if (vals.filter(v => v === "O").length === gridSize - 1 && vals.includes("")) {
+      return playMove(combo[vals.indexOf("")], "O");
     }
   }
 
-  // 2. Si joueur peut gagner → IA bloque
+  // 2. Joueur peut gagner → IA bloque
   for (let combo of winningCombos) {
-    const [a, b, c] = combo;
-    let line = [board[a], board[b], board[c]];
-    if (line.filter(v => v === "X").length === 2 && line.includes("")) {
-      return playMove(combo[line.indexOf("")], "O");
+    let vals = combo.map(i => board[i]);
+    if (vals.filter(v => v === "X").length === gridSize - 1 && vals.includes("")) {
+      return playMove(combo[vals.indexOf("")], "O");
     }
   }
 
-  // 3. Sinon → random
   aiEasy();
 }
 
-// --- IA IMPOSSIBLE (MINIMAX) ---
+// --- IA IMPOSSIBLE (Minimax adapté) ---
 function minimax(newBoard, player) {
-  const availSpots = newBoard.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+  let empty = newBoard.map((v, i) => v === "" ? i : null).filter(v => v !== null);
 
   if (checkWinner(newBoard, "X")) return { score: -10 };
   if (checkWinner(newBoard, "O")) return { score: 10 };
-  if (availSpots.length === 0) return { score: 0 };
+  if (empty.length === 0) return { score: 0 };
 
   let moves = [];
 
-  for (let i = 0; i < availSpots.length; i++) {
-    let move = {};
-    move.index = availSpots[i];
-    newBoard[availSpots[i]] = player;
+  for (let i of empty) {
+    let move = { index: i };
+    newBoard[i] = player;
 
-    if (player === "O") {
-      let result = minimax(newBoard, "X");
-      move.score = result.score;
-    } else {
-      let result = minimax(newBoard, "O");
-      move.score = result.score;
-    }
+    move.score = minimax(newBoard, player === "O" ? "X" : "O").score;
 
-    newBoard[availSpots[i]] = "";
+    newBoard[i] = "";
     moves.push(move);
   }
 
-  let bestMove;
-  if (player === "O") {
-    let bestScore = -10000;
-    moves.forEach((m, i) => {
-      if (m.score > bestScore) {
-        bestScore = m.score;
-        bestMove = i;
-      }
-    });
-  } else {
-    let bestScore = 10000;
-    moves.forEach((m, i) => {
-      if (m.score < bestScore) {
-        bestScore = m.score;
-        bestMove = i;
-      }
-    });
-  }
-
-  return moves[bestMove];
+  return player === "O"
+    ? moves.reduce((a, b) => a.score > b.score ? a : b)
+    : moves.reduce((a, b) => a.score < b.score ? a : b);
 }
 
 function checkWinner(b, p) {
-  return winningCombos.some(([a, b2, c]) => b[a] === p && b[b2] === p && b[c] === p);
+  return winningCombos.some(combo => combo.every(i => b[i] === p));
 }
 
 function aiHard() {
@@ -152,8 +156,9 @@ function playMove(index, player) {
   if (board[index] !== "" || !gameActive) return;
 
   board[index] = player;
-  cells[index].textContent = player;
-  cells[index].classList.add("disabled");
+  const cell = document.querySelector(`.cell[data-index="${index}"]`);
+  cell.textContent = player;
+  cell.classList.add("disabled");
 
   if (checkWin()) {
     statusText.textContent = `Le joueur ${player} a gagné !`;
@@ -180,8 +185,7 @@ function playMove(index, player) {
   currentPlayer = currentPlayer === "X" ? "O" : "X";
   statusText.textContent = `Tour du joueur ${currentPlayer}`;
 
-  // IA joue automatiquement
-  if (currentPlayer === "O" && gameActive) {
+  if (currentPlayer === "O" && gameMode !== "pvp") {
     setTimeout(() => {
       if (gameMode === "easy") aiEasy();
       else if (gameMode === "medium") aiMedium();
@@ -198,12 +202,12 @@ function handleCellClick(e) {
 
 // --- Reset partie ---
 function resetGame() {
-  board = ["", "", "", "", "", "", "", "", ""];
+  board.fill("");
   gameActive = true;
   currentPlayer = "X";
   statusText.textContent = "Tour du joueur X";
 
-  cells.forEach(c => {
+  document.querySelectorAll('.cell').forEach(c => {
     c.textContent = "";
     c.classList.remove("disabled");
   });
@@ -211,27 +215,34 @@ function resetGame() {
 
 // --- Reset scores ---
 function resetScores() {
-  scoreX = 0;
-  scoreO = 0;
-  scoreDraw = 0;
-
-  scoreXText.textContent = 0;
-  scoreOText.textContent = 0;
-  scoreDrawText.textContent = 0;
-
+  scoreX = scoreO = scoreDraw = 0;
+  scoreXText.textContent = scoreOText.textContent = scoreDrawText.textContent = 0;
   localStorage.clear();
 }
 
-// --- Changer de mode ---
+// --- Boutons de mode ---
 modeButtons.forEach(btn => {
   btn.addEventListener("click", () => {
+    modeButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
     gameMode = btn.dataset.mode;
     resetGame();
   });
 });
 
+// --- Boutons de taille ---
+sizeButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    sizeButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    createBoard(parseInt(btn.dataset.size));
+  });
+});
+
 // --- Init ---
-cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+createBoard(3);
+loadScores();
 resetBtn.addEventListener('click', resetGame);
 resetScoresBtn.addEventListener('click', resetScores);
-loadScores();
