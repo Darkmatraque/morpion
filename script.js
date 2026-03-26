@@ -2,6 +2,16 @@ const cells = document.querySelectorAll('.cell');
 const statusText = document.getElementById('status');
 const resetBtn = document.getElementById('reset');
 
+// --- Scores ---
+let scoreX = 0;
+let scoreO = 0;
+let scoreDraw = 0;
+
+const scoreXText = document.getElementById('scoreX');
+const scoreOText = document.getElementById('scoreO');
+const scoreDrawText = document.getElementById('scoreDraw');
+
+// --- Jeu ---
 let currentPlayer = 'X';
 let board = ["", "", "", "", "", "", "", "", ""];
 let gameActive = true;
@@ -32,12 +42,27 @@ function handleCellClick(e) {
   if (checkWin()) {
     statusText.textContent = `Le joueur ${currentPlayer} a gagné !`;
     gameActive = false;
+
+    // --- Mise à jour des scores ---
+    if (currentPlayer === "X") {
+      scoreX++;
+      scoreXText.textContent = scoreX;
+    } else {
+      scoreO++;
+      scoreOText.textContent = scoreO;
+    }
+
     return;
   }
 
   if (board.every(cell => cell !== "")) {
     statusText.textContent = "Match nul !";
     gameActive = false;
+
+    // --- Score match nul ---
+    scoreDraw++;
+    scoreDrawText.textContent = scoreDraw;
+
     return;
   }
 
@@ -69,3 +94,4 @@ function resetGame() {
 
 cells.forEach(cell => cell.addEventListener('click', handleCellClick));
 resetBtn.addEventListener('click', resetGame);
+
