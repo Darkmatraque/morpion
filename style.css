@@ -1,3 +1,5 @@
+/* === MORPION TOTALLYYAS === */
+
 /* Reset + base */
 * {
   box-sizing: border-box;
@@ -43,6 +45,11 @@ h1 {
 
 #mode button:hover {
   background: #555;
+}
+
+#mode button.active {
+  background: #007bff !important;
+  box-shadow: 0 0 12px #007bff;
 }
 
 /* Scores */
@@ -124,10 +131,3 @@ button:hover {
 #resetScores:hover {
   background: #c9302c;
 }
-
-#mode button.active {
-  background: #007bff !important;
-  box-shadow: 0 0 12px #007bff;
-}
-
-
